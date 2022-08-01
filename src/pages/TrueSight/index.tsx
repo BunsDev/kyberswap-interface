@@ -180,7 +180,12 @@ export default function TrueSight({ history }: RouteComponentProps) {
               setFilter={setFilter}
               notificationState={notificationState}
             />
-            <TrendingLayout filter={filter} setFilter={setFilter} />
+            <TrendingLayout
+              filter={filter}
+              setFilter={setFilter}
+              sortSettings={sortSettings}
+              setSortSettings={setSortSettings}
+            />
           </Flex>
         </>
       )}

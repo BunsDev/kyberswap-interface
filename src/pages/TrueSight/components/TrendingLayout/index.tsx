@@ -1,24 +1,31 @@
 import React, { Dispatch, SetStateAction, useEffect, useMemo, useState } from 'react'
 import { useMedia } from 'react-use'
+import { Box, Flex, Text } from 'rebass'
+import { Trans } from '@lingui/macro'
+import styled from 'styled-components'
+import { ChevronDown, ArrowUp } from 'react-feather'
+import { rgba } from 'polished'
+import dayjs from 'dayjs'
+
 import { TrueSightContainer } from 'pages/TrueSight/components/TrendingSoonLayout'
 import TrendingTokenItemMobileOnly from 'pages/TrueSight/components/TrendingLayout/TrendingTokenItemMobileOnly'
 import { TrueSightTokenData } from 'pages/TrueSight/hooks/useGetTrendingSoonData'
-import { TrueSightChartCategory, TrueSightFilter, TrueSightTimeframe } from 'pages/TrueSight/index'
+import {
+  TrueSightChartCategory,
+  TrueSightFilter,
+  TrueSightSortSettings,
+  TrueSightTimeframe,
+} from 'pages/TrueSight/index'
 import useGetCoinGeckoChartData from 'pages/TrueSight/hooks/useGetCoinGeckoChartData'
 import useTheme from 'hooks/useTheme'
 import Pagination from 'components/Pagination'
-import { Box, Flex, Text } from 'rebass'
 import MobileChartModal from 'pages/TrueSight/components/TrendingSoonLayout/MobileChartModal'
 import useGetTrendingData from 'pages/TrueSight/hooks/useGetTrendingData'
 import LocalLoader from 'components/LocalLoader'
 import WarningIcon from 'components/LiveChart/WarningIcon'
-import { Trans } from '@lingui/macro'
-import styled from 'styled-components'
 import ButtonWithOptions from 'pages/TrueSight/components/ButtonWithOptions'
-import { ChevronDown } from 'react-feather'
 import { TruncatedText } from 'pages/TrueSight/components/TrendingSoonLayout/TrendingSoonTokenItem'
 import { formattedNumLong } from 'utils'
-import { rgba } from 'polished'
 import Tags from 'pages/TrueSight/components/Tags'
 import CommunityButton, { StyledCommunityButton } from 'pages/TrueSight/components/CommunityButton'
 import { ExternalLink } from 'theme'
@@ -28,29 +35,67 @@ import {
   WebsiteCommunityAddressContainer,
 } from 'pages/TrueSight/components/TrendingSoonLayout/TrendingSoonTokenDetail'
 import Chart from 'pages/TrueSight/components/Chart'
-import dayjs from 'dayjs'
 import Divider from 'components/Divider'
 import getFormattedNumLongDiscoveredDetails from 'pages/TrueSight/utils/getFormattedNumLongDiscoveredDetails'
 import { TRENDING_ITEM_PER_PAGE } from 'constants/index'
 
-const TrendingLayout = ({
-  filter,
-  setFilter,
-}: {
+const getSortedAndPaginatedTrendingTokens = (
+  data: TrueSightTokenData[],
+  sortSettings: TrueSightSortSettings,
+  page: number,
+) => {
+  const { sortBy, sortDirection } = sortSettings
+  const rankComparer = (a: TrueSightTokenData, b: TrueSightTokenData) => (a.rank && b.rank ? a.rank - b.rank : 0)
+  const nameComparer = (a: TrueSightTokenData, b: TrueSightTokenData) =>
+    a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1
+  const discoveredOnComparer = (a: TrueSightTokenData, b: TrueSightTokenData) => a.discovered_on - b.discovered_on
+
+  let comparer = rankComparer
+  if (sortBy === 'name') {
+    comparer = nameComparer
+  } else if (sortBy === 'discovered_on') {
+    comparer = discoveredOnComparer
+  }
+
+  // `sort` is in-place, spreading `data` is to avoid modifying the original
+  const res = [...data].sort(comparer)
+
+  // `reverse` is in-place
+  if (sortDirection === 'desc') {
+    res.reverse()
+  }
+
+  // pagination
+  return res.slice((page - 1) * TRENDING_ITEM_PER_PAGE, page * TRENDING_ITEM_PER_PAGE)
+}
+
+type Props = {
   filter: TrueSightFilter
   setFilter: React.Dispatch<React.SetStateAction<TrueSightFilter>>
-}) => {
+  sortSettings: TrueSightSortSettings
+  setSortSettings: React.Dispatch<React.SetStateAction<TrueSightSortSettings>>
+}
+
+const EmptyArray: any[] = []
+
+const TrendingLayout: React.FC<Props> = ({ filter, setFilter, sortSettings, setSortSettings }) => {
   const [selectedToken, setSelectedToken] = useState<TrueSightTokenData>()
   const [isOpenChartModal, setIsOpenChartModal] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
 
   const above1200 = useMedia('(min-width: 1200px)')
   const {
-    data: trendingSoonData,
-    isLoading: isLoadingTrendingSoonTokens,
-    error: errorWhenLoadingTrendingSoonData,
-  } = useGetTrendingData(filter, currentPage, TRENDING_ITEM_PER_PAGE)
-  const trendingSoonTokens = trendingSoonData?.tokens ?? []
+    data: trendingData,
+    isLoading: isLoadingTrendingTokens,
+    error: errorWhenLoadingTrendingData,
+  } = useGetTrendingData(filter)
+  const trendingTokens = trendingData?.tokens ?? EmptyArray
+
+  const visibleTokens = useMemo(() => getSortedAndPaginatedTrendingTokens(trendingTokens, sortSettings, currentPage), [
+    currentPage,
+    sortSettings,
+    trendingTokens,
+  ])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -78,15 +123,67 @@ const TrendingLayout = ({
   const MobileLayout = () => (
     <Box overflow="hidden">
       <MobileTableHeader>
-        <MobileTableHeaderItem style={{ marginRight: 24, marginLeft: 4 }}>#</MobileTableHeaderItem>
-        <MobileTableHeaderItem style={{ flex: 1 }}>
-          <Trans>Name</Trans>
+        <MobileTableHeaderItem
+          style={{ marginRight: 10, marginLeft: 4 }}
+          onClick={() => {
+            setSortSettings(prev => ({
+              sortBy: 'rank',
+              sortDirection: prev.sortBy === 'rank' ? (prev.sortDirection === 'asc' ? 'desc' : 'asc') : 'asc',
+            }))
+            setCurrentPage(1)
+          }}
+        >
+          #
+          <ArrowUp
+            color={theme.subText}
+            size={12}
+            style={{
+              visibility: sortSettings.sortBy === 'rank' ? 'visible' : 'hidden',
+              transform: sortSettings.sortDirection === 'desc' ? 'rotate(180deg)' : 'unset',
+            }}
+          />
         </MobileTableHeaderItem>
-        <MobileTableHeaderItem>
+        <MobileTableHeaderItem
+          style={{ flex: 1 }}
+          onClick={() => {
+            setSortSettings(prev => ({
+              sortBy: 'name',
+              sortDirection: prev.sortBy === 'name' ? (prev.sortDirection === 'asc' ? 'desc' : 'asc') : 'asc',
+            }))
+            setCurrentPage(1)
+          }}
+        >
+          <Trans>Name</Trans>
+          <ArrowUp
+            color={theme.subText}
+            size={12}
+            style={{
+              visibility: sortSettings.sortBy === 'name' ? 'visible' : 'hidden',
+              transform: sortSettings.sortDirection === 'desc' ? 'rotate(180deg)' : 'unset',
+            }}
+          />
+        </MobileTableHeaderItem>
+        <MobileTableHeaderItem
+          onClick={() => {
+            setSortSettings(prev => ({
+              sortBy: 'discovered_on',
+              sortDirection: prev.sortBy === 'discovered_on' ? (prev.sortDirection === 'asc' ? 'desc' : 'asc') : 'asc',
+            }))
+            setCurrentPage(1)
+          }}
+        >
           <Trans>Discovered on</Trans>
+          <ArrowUp
+            color={theme.subText}
+            size={12}
+            style={{
+              visibility: sortSettings.sortBy === 'discovered_on' ? 'visible' : 'hidden',
+              transform: sortSettings.sortDirection === 'desc' ? 'rotate(180deg)' : 'unset',
+            }}
+          />
         </MobileTableHeaderItem>
       </MobileTableHeader>
-      {trendingSoonTokens.map((tokenData, index) => (
+      {visibleTokens.map((tokenData, index) => (
         <TrendingTokenItemMobileOnly
           key={tokenData.token_id}
           isSelected={selectedToken?.token_id === tokenData.token_id}
@@ -101,7 +198,7 @@ const TrendingLayout = ({
         pageSize={TRENDING_ITEM_PER_PAGE}
         onPageChange={newPage => setCurrentPage(newPage)}
         currentPage={currentPage}
-        totalCount={trendingSoonData?.total_number_tokens ?? 1}
+        totalCount={trendingData?.total_number_tokens ?? 1}
       />
       <MobileChartModal
         isOpen={isOpenChartModal}
@@ -263,7 +360,7 @@ const TrendingLayout = ({
           <Trans>Actions</Trans>
         </TableHeaderItem>
       </TableHeader>
-      {trendingSoonTokens.map(tokenData => (
+      {visibleTokens.map(tokenData => (
         <TableBody
           key={tokenData.token_id}
           tokenData={tokenData}
@@ -275,7 +372,7 @@ const TrendingLayout = ({
         pageSize={TRENDING_ITEM_PER_PAGE}
         onPageChange={newPage => setCurrentPage(newPage)}
         currentPage={currentPage}
-        totalCount={trendingSoonData?.total_number_tokens ?? 1}
+        totalCount={trendingData?.total_number_tokens ?? 1}
       />
     </TableContainer>
   )
@@ -283,9 +380,9 @@ const TrendingLayout = ({
   return (
     <>
       <TrueSightContainer style={{ minHeight: 'unset' }}>
-        {isLoadingTrendingSoonTokens ? (
+        {isLoadingTrendingTokens ? (
           <LocalLoader />
-        ) : errorWhenLoadingTrendingSoonData || trendingSoonTokens.length === 0 ? (
+        ) : errorWhenLoadingTrendingData || trendingTokens.length === 0 ? (
           <Flex
             flexDirection="column"
             height="100%"
@@ -295,7 +392,7 @@ const TrendingLayout = ({
           >
             <WarningIcon />
             <Text color={theme.disableText}>
-              {trendingSoonTokens.length === 0 && filter.isShowTrueSightOnly ? (
+              {trendingTokens.length === 0 && filter.isShowTrueSightOnly ? (
                 <Trans>No token found. Try turn off truesight.</Trans>
               ) : (
                 <Trans>No token found</Trans>
