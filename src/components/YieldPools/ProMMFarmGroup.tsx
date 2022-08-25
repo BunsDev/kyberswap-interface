@@ -4,7 +4,7 @@ import { Trans, t } from '@lingui/macro'
 import { BigNumber } from 'ethers'
 import { rgba } from 'polished'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Edit2, Minus, Plus } from 'react-feather'
+import { Edit2, Minus, Plus, Share2 } from 'react-feather'
 import { Link } from 'react-router-dom'
 import { useMedia } from 'react-use'
 import { Flex, Text } from 'rebass'
@@ -24,8 +24,10 @@ import Harvest from 'components/Icons/Harvest'
 import Withdraw from 'components/Icons/Withdraw'
 import InfoHelper from 'components/InfoHelper'
 import Modal from 'components/Modal'
+import ShareModal from 'components/ShareModal'
 import { MouseoverTooltip, MouseoverTooltipDesktopOnly } from 'components/Tooltip'
 import { ELASTIC_BASE_FEE_UNIT, ZERO_ADDRESS } from 'constants/index'
+import { NETWORKS_INFO } from 'constants/networks'
 import { VERSION } from 'constants/v2'
 import { useActiveWeb3React } from 'hooks'
 import { useToken, useTokens } from 'hooks/Tokens'
@@ -33,7 +35,8 @@ import { useProAmmNFTPositionManagerContract } from 'hooks/useContract'
 import useParsedQueryString from 'hooks/useParsedQueryString'
 import useTheme from 'hooks/useTheme'
 import { Dots } from 'pages/Pool/styleds'
-import { useWalletModalToggle } from 'state/application/hooks'
+import { ApplicationModal } from 'state/application/actions'
+import { useModalOpen, useOpenModal, useWalletModalToggle } from 'state/application/hooks'
 import { useRewardTokenPrices } from 'state/farms/hooks'
 import { useFailedNFTs, useFarmAction, useProMMFarmTVL } from 'state/farms/promm/hooks'
 import { ProMMFarm } from 'state/farms/promm/types'
@@ -146,6 +149,7 @@ const Row = ({
   onOpenModal,
   onHarvest,
   onUpdateDepositedInfo,
+  setSharedPoolAddress,
 }: {
   isApprovedForAll: boolean
   fairlaunchAddress: string
@@ -158,6 +162,7 @@ const Row = ({
     token0Amount: CurrencyAmount<Token>
     token1Amount: CurrencyAmount<Token>
   }) => void
+  setSharedPoolAddress: (addr: string) => void
 }) => {
   const theme = useTheme()
   const currentTimestamp = Math.floor(Date.now() / 1000)
@@ -521,6 +526,19 @@ const Row = ({
                 {token0?.symbol} - {token1?.symbol}
               </Text>
             </Link>
+
+            <Flex
+              onClick={() => {
+                setSharedPoolAddress(farm.poolAddress)
+              }}
+              sx={{
+                marginLeft: '8px',
+                cursor: 'pointer',
+              }}
+              role="button"
+            >
+              <Share2 size="14px" color={theme.subText} />
+            </Flex>
           </Flex>
 
           <Flex
@@ -652,8 +670,9 @@ function ProMMFarmGroup({
   farms: ProMMFarm[]
 }) {
   const theme = useTheme()
-  const { account } = useActiveWeb3React()
+  const { account, chainId } = useActiveWeb3React()
   const above768 = useMedia('(min-width: 768px)')
+  const networkRoute = chainId ? NETWORKS_INFO[chainId].route : undefined
 
   const [userPoolFarmInfo, setUserPoolFarmInfo] = useState<{
     [pid: number]: {
@@ -662,6 +681,14 @@ function ProMMFarmGroup({
       token1Amount: CurrencyAmount<Token>
     }
   }>({})
+
+  const [sharedPoolAddress, setSharedPoolAddress] = useState('')
+  const openShareModal = useOpenModal(ApplicationModal.SHARE)
+  const isShareModalOpen = useModalOpen(ApplicationModal.SHARE)
+
+  const shareUrl = sharedPoolAddress
+    ? window.location.origin + '/farms?search=' + sharedPoolAddress + '&tab=elastic&networkId=' + networkRoute
+    : undefined
 
   const rewardAddresses = useMemo(() => {
     const rws = farms.reduce((acc, cur) => [...acc, ...cur.rewardTokens], [] as string[])
@@ -783,6 +810,22 @@ function ProMMFarmGroup({
 
   const qs = useParsedQueryString()
   const tab = qs.tab || 'active'
+
+  useEffect(() => {
+    if (sharedPoolAddress) {
+      openShareModal()
+    }
+  }, [openShareModal, sharedPoolAddress])
+
+  useEffect(() => {
+    setSharedPoolAddress(addr => {
+      if (!isShareModalOpen) {
+        return ''
+      }
+
+      return addr
+    })
+  }, [isShareModalOpen, setSharedPoolAddress])
 
   if (!farms) return null
 
@@ -987,9 +1030,12 @@ function ProMMFarmGroup({
             onHarvest={() => {
               onOpenModal('harvest', farm.pid)
             }}
+            setSharedPoolAddress={setSharedPoolAddress}
           />
         )
       })}
+
+      <ShareModal title={t`Share this farm with your friends!`} url={shareUrl} />
     </FarmContent>
   )
 }
