@@ -1,7 +1,7 @@
 import { ChainId } from '@kyberswap/ks-sdk-core'
 import { t } from '@lingui/macro'
 import { UnsupportedChainIdError } from '@web3-react/core'
-import { stringify } from 'qs'
+import { stringify } from 'querystring'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useHistory, useLocation } from 'react-router'
 

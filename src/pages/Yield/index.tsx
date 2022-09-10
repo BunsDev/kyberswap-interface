@@ -1,6 +1,6 @@
 import { Token } from '@kyberswap/ks-sdk-core'
 import { Trans } from '@lingui/macro'
-import { stringify } from 'qs'
+import { stringify } from 'querystring'
 import { useMemo } from 'react'
 import { useSelector } from 'react-redux'
 import { useHistory } from 'react-router-dom'

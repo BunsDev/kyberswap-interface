@@ -1,7 +1,7 @@
 import { createReducer } from '@reduxjs/toolkit'
-import { parse } from 'qs'
 
 import { FeeConfig } from 'hooks/useSwapV2Callback'
+import { queryStringToObject } from 'utils/string'
 
 import {
   Field,
@@ -32,7 +32,7 @@ export interface SwapState {
 }
 
 const { search } = window.location
-const { inputCurrency, outputCurrency } = parse(search.indexOf('?') === 0 ? search.substring(1) : search)
+const { inputCurrency, outputCurrency } = queryStringToObject(search)
 
 const initialState: SwapState = {
   independentField: Field.INPUT,

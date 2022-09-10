@@ -1,4 +1,5 @@
 import { ChainId, Currency, Token } from '@kyberswap/ks-sdk-core'
+import { parse } from 'querystring'
 
 import { NETWORKS_INFO } from 'constants/networks'
 
@@ -20,4 +21,8 @@ export const getSymbolSlug = (token: Currency | Token | undefined) =>
 
 export const getNetworkSlug = (chainId: ChainId | undefined) => {
   return chainId ? NETWORKS_INFO[chainId].route : ''
+}
+
+export const queryStringToObject = (queryString: string) => {
+  return parse(queryString.startsWith('?') ? queryString.substring(1) : queryString)
 }

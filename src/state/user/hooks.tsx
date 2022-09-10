@@ -1,6 +1,5 @@
 import { Pair } from '@kyberswap/ks-sdk-classic'
 import { ChainId, Token } from '@kyberswap/ks-sdk-core'
-import flatMap from 'lodash.flatmap'
 import { useCallback, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
@@ -286,7 +285,7 @@ export function useTrackedTokenPairs(): [Token, Token][] {
     if (chainId) {
       const baseTrackedTokens = BASES_TO_TRACK_LIQUIDITY_FOR[chainId]
 
-      return flatMap(baseTrackedTokens, trackedToken => {
+      return baseTrackedTokens.flatMap(trackedToken => {
         return (
           // loop though all bases on the current chain
           (BASES_TO_TRACK_LIQUIDITY_FOR[chainId] ?? [])

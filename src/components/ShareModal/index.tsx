@@ -1,6 +1,5 @@
 import { t } from '@lingui/macro'
 import React, { useMemo, useState } from 'react'
-import { CopyToClipboard } from 'react-copy-to-clipboard'
 import { Share2, X } from 'react-feather'
 import { useLocation } from 'react-router-dom'
 import { Flex, Text } from 'rebass'
@@ -14,6 +13,7 @@ import Modal from 'components/Modal'
 import { MouseoverTooltip } from 'components/Tooltip'
 import { StyledActionButtonSwapForm } from 'components/swapv2/styleds'
 import { useActiveWeb3React } from 'hooks'
+import useCopyClipboard from 'hooks/useCopyClipboard'
 import useTheme from 'hooks/useTheme'
 import { ApplicationModal } from 'state/application/actions'
 import { useModalOpen, useToggleModal } from 'state/application/hooks'
@@ -108,11 +108,10 @@ export default function ShareModal({ url, onShared = () => null }: { url?: strin
     return window.location.href + `?networkId=${chainId}`
   }, [chainId, url])
 
-  const [showAlert, setShowAlert] = useState(false)
+  const [isCopied, setCopied] = useCopyClipboard()
   const handleCopyClick = () => {
-    setShowAlert(true)
-    setTimeout(() => setShowAlert(false), 2000)
     onShared()
+    setCopied(shareUrl)
   }
 
   return (
@@ -159,31 +158,21 @@ export default function ShareModal({ url, onShared = () => null }: { url?: strin
           </ButtonWithHoverEffect>
           <ButtonWithHoverEffect onClick={onShared}>
             {(color: string) => (
-              <CopyToClipboard
-                text={shareUrl}
-                onCopy={() => {
-                  handleCopyClick()
-                  window.open('https://discord.com/app/', '_blank')
-                }}
-              >
-                <div>
-                  <a href="https://discord.com/app/" onClick={e => e.preventDefault()}>
-                    <Discord width={36} height={36} color={color} />
-                  </a>
-                  <Text>Discord</Text>
-                </div>
-              </CopyToClipboard>
+              <>
+                <ExternalLink href="https://discord.com/app/">
+                  <Discord width={36} height={36} color={color} />
+                </ExternalLink>
+                <Text>Discord</Text>
+              </>
             )}
           </ButtonWithHoverEffect>
         </Flex>
         <InputWrapper>
           <input type="text" value={shareUrl} />
-          <CopyToClipboard text={shareUrl} onCopy={handleCopyClick}>
-            <ButtonPrimary fontSize={14} padding="8px 12px" width="auto">
-              Copy Link
-              <AlertMessage className={showAlert ? 'show' : ''}>Copied!</AlertMessage>
-            </ButtonPrimary>
-          </CopyToClipboard>
+          <ButtonPrimary onClick={handleCopyClick} fontSize={14} padding="8px 12px" width="auto">
+            Copy Link
+            <AlertMessage className={isCopied ? 'show' : ''}>Copied!</AlertMessage>
+          </ButtonPrimary>
         </InputWrapper>
       </Flex>
     </Modal>
