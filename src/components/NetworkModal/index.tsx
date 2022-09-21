@@ -129,9 +129,14 @@ export default function NetworkModal(): JSX.Element | null {
                 onClick={() => {
                   toggleNetworkModal()
                   changeNetwork(key, () => {
-                    const { networkId, inputCurrency, outputCurrency, ...rest } = qs
+                    const { inputCurrency, outputCurrency, ...rest } = qs
+                    const obj = {
+                      ...rest,
+                      networkId: key,
+                    }
+                    console.log({ obj })
                     history.replace({
-                      search: stringify(rest),
+                      search: stringify(obj),
                     })
                   })
                 }}

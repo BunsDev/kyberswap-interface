@@ -58,13 +58,19 @@ export function useActiveNetwork() {
 
       const isNotConnected = !(library && library.provider)
       const isWrongNetwork = error instanceof UnsupportedChainIdError
+      console.log({ isNotConnected, isWrongNetwork })
+
+      const { networkId, ...rest } = qs
+      const str = stringify({ ...rest, networkId: desiredChainId })
+      console.log({ str })
+      history.push({ ...location, search: str })
+
       if (isNotConnected && !isWrongNetwork) {
         dispatch(updateChainIdWhenNotConnected(desiredChainId))
         successCallback && successCallback()
         return
       }
 
-      history.push(locationWithoutNetworkId)
       const activeProvider = library?.provider ?? window.ethereum
       if (activeProvider && activeProvider.request) {
         try {
@@ -117,13 +123,15 @@ export function useActiveNetwork() {
         }
       }
     },
-    [dispatch, history, library, locationWithoutNetworkId, error, notify],
+    [dispatch, error, history, library, location, notify, qs],
   )
 
   useEffect(() => {
     const urlNetworkId = typeof qs.networkId === 'string' ? parseNetworkId(qs.networkId) : undefined
     if (urlNetworkId && urlNetworkId !== chainId) {
       changeNetwork(urlNetworkId)
+    } else if (!qs.networkId && chainId) {
+      changeNetwork(chainId)
     }
   }, [chainId, changeNetwork, qs.networkId])
 
